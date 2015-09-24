@@ -71,7 +71,7 @@ print(n_all_batch)
 # define constance
 batchsize = 100
 n_input = default_bitrate
-n_units = 1000
+n_units = 500
 n_epoch = 100
 
 
@@ -139,7 +139,8 @@ for epoch in range(1, n_epoch + 1):
         y_batch = cuda.to_gpu(y_train[perm[i:i + batchsize]])
 
         optimizer.zero_grads()
-        loss = forward(x_batch, y_batch)
+        #loss = forward(x_batch, y_batch)
+        loss = forward(x_batch, y_batch, train=True)
         loss.backward()
         optimizer.update()
 

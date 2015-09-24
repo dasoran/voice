@@ -33,15 +33,17 @@ output_datas = []
 
 for i in range(0, len(test_datas) - 1):
     x, input, output_ = tuple(test_datas[i].split(' '))
-    output_data4append = math.floor(float(output_))
-    input_data4append = math.floor(float(input))
+    output_data4append = math.floor(float(output_)) + 30000
+    if output_data4append > 65535:
+        output_data4append = 65535
     if output_data4append < 0:
         output_data4append = 0
+    input_data4append = math.floor(float(input)) + 30000
     output_datas.append(output_data4append)
     input_datas.append(input_data4append)
 
 
-output(result_export_path, (np.array(output_datas) + 30000).tolist())
-output(input_export_path, (np.array(input_datas) + 30000).tolist())
+output(result_export_path, (np.array(output_datas)).tolist())
+output(input_export_path, (np.array(input_datas)).tolist())
 
 
