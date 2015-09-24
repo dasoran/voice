@@ -174,32 +174,39 @@ f.close()
 
 
 # test
+print('-----')
+print('starting to make test data with model')
 
+x = Variable(cuda.to_gpu(x_train[1000:1000 + 200].reshape((200, default_bitrate))))
+h1 = F.dropout(F.relu(model.l1(x)),  train=False)
+y = F.dropout(model.l2(h1), train=False)
+#print(x.data)
+#print(y.data)
+
+
+x_range = np.arange(0, default_bitrate * 200, 1)
+print('test  mean loss={}'.format(F.mean_squared_error(y, x).data))
+#print(x.data.ndim, x_range.ndim)
+#plt.plot(x_range, y.data[0])
+#plt.plot(x_range, t.data[0])
+#plt.show()
 x_datas = []
 t_datas = []
 y_datas = []
-for data_subid in range(0, 200):
-    x = Variable(cuda.to_gpu(x_train[1000 + data_subid].reshape((1, default_bitrate))))
-    h1 = F.dropout(F.relu(model.l1(x)),  train=False)
-    y = F.dropout(model.l2(h1), train=False)
-    #print(x.data)
-    #print(y.data)
+x_datas.extend(x_range)
+for t_in_onebatch in x.data.tolist():
+    t_datas.extend(t_in_onebatch)
+for y_in_onebatch in y.data.tolist():
+    y_datas.extend(y_in_onebatch)
 
+print('finished converting to save')
 
-    x_range = np.arange(0 + default_bitrate * data_subid, 0 + default_bitrate * data_subid + default_bitrate, 1)
-    print('test  mean loss={}'.format(F.mean_squared_error(y, x).data))
-    #print(x.data.ndim, x_range.ndim)
-    #plt.plot(x_range, y.data[0])
-    #plt.plot(x_range, t.data[0])
-    #plt.show()
-    x_datas.extend(x_range)
-    t_datas.extend(x.data[0])
-    y_datas.extend(y.data[0])
-
-f = open(sample_output, 'w')
+strs = ""
 for i in range(0, len(x_datas)):
-    strs = '{0:05.0f} {1:.2f} {2:.2f}\n'.format(x_datas[i], float(t_datas[i]), float(y_datas[i]))
-    f.writelines(strs)
+    strs = strs + '{0:05.0f} {1:.2f} {2:.2f}\n'.format(x_datas[i], t_datas[i], y_datas[i])
+print('finished making outputdata')
+f = open(sample_output, 'w')
+f.write(strs)
 f.close()
 
 
