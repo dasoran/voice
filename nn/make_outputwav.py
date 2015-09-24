@@ -1,4 +1,5 @@
 #!/usr/local/bin/python3
+import numpy as np
 import wave
 import math
 
@@ -12,7 +13,7 @@ def output(path, datas, bitrate = default_bitrate):
     length = len(datas)
     i = 0
     while i < length:
-        byted_data = datas[i].to_bytes(2,  byteorder='little')
+        byted_data = math.floor(datas[i]).to_bytes(2,  byteorder='little')
         output_datas.append(byted_data[0])
         output_datas.append(byted_data[1])
         i = i + 1
@@ -40,7 +41,7 @@ for i in range(0, len(test_datas) - 1):
     input_datas.append(input_data4append)
 
 
-output(result_export_path, output_datas)
-output(input_export_path, input_datas)
+output(result_export_path, (np.array(output_datas) + 30000).tolist())
+output(input_export_path, (np.array(input_datas) + 30000).tolist())
 
 

@@ -71,12 +71,33 @@ print(n_all_batch)
 # define constance
 batchsize = 100
 n_input = default_bitrate
-n_units = 500
+n_units = 1000
 n_epoch = 100
 
 
+zero_removed_datas = []
+n_removed_batch = 0
+n_ok_batch = 0
+for i in range(0, n_all_batch):
+    one_batch_datas = datas[i*default_bitrate:(i+1)*default_bitrate]
+    isAllZero = True
+    for data in one_batch_datas:
+        if data > 10:
+            isAllZero = False
+            break
+    if isAllZero:
+        n_removed_batch = n_removed_batch + 1
+    else:
+        n_ok_batch = n_ok_batch + 1
+        zero_removed_datas.extend(one_batch_datas)
+
+n_all_batch = n_all_batch - n_removed_batch
+print(n_ok_batch, n_removed_batch)
+print(n_all_batch, len(zero_removed_datas) / default_bitrate)
+
 #np_datas = np.array(datas, dtype=np.float32) - 30000
-np_datas = np.array(datas, dtype=np.float32)
+#np_datas = np.array(zero_removed_datas, dtype=np.float32)
+np_datas = np.array(zero_removed_datas, dtype=np.float32) - 30000
 batched_datas = np_datas.reshape((n_all_batch, default_bitrate))
 batched_datas = batched_datas.astype(np.float32)
 n_train_batchset = math.floor(n_all_batch / batchsize) - 10
@@ -156,8 +177,8 @@ f.close()
 x_datas = []
 t_datas = []
 y_datas = []
-for data_subid in range(0, 100):
-    x = Variable(cuda.to_gpu(x_train[50 + data_subid].reshape((1, default_bitrate))))
+for data_subid in range(0, 200):
+    x = Variable(cuda.to_gpu(x_train[1000 + data_subid].reshape((1, default_bitrate))))
     h1 = F.dropout(F.relu(model.l1(x)),  train=False)
     y = F.dropout(model.l2(h1), train=False)
     #print(x.data)
