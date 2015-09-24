@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
 import chainer.functions as F
 import wave
@@ -8,7 +8,11 @@ import math
 import os
 
 # define default constance
-default_bitrate = 48000
+#default_bitrate = 48000
+default_bitrate = 1000
+datas_export_path = '/home/dasoran/datas.wav'
+sample_output = 'test.txt'
+loss_output = 'loss.txt'
 
 
 # generate data
@@ -40,7 +44,6 @@ def output(path, datas, bitrate = default_bitrate):
 datas = []
 n_all_batch = 0
 
-datas_export_path = '/Users/dasoran/datas.wav'
 
 if os.path.exists(datas_export_path):
     file_path = datas_export_path
@@ -69,13 +72,14 @@ print(n_all_batch)
 batchsize = 100
 n_input = default_bitrate
 n_units = 500
-n_epoch = 10
+n_epoch = 100
 
 
-np_datas = np.array(datas, dtype=np.float32) - 30000
+#np_datas = np.array(datas, dtype=np.float32) - 30000
+np_datas = np.array(datas, dtype=np.float32)
 batched_datas = np_datas.reshape((n_all_batch, default_bitrate))
 batched_datas = batched_datas.astype(np.float32)
-n_train_batchset = math.floor(n_all_batch / batchsize) - 1
+n_train_batchset = math.floor(n_all_batch / batchsize) - 10
 x_train, x_test = np.split(batched_datas, [n_train_batchset * batchsize])
 y_train, y_test = np.split(batched_datas.copy(), [n_train_batchset * batchsize])
 n_test_batchset = math.floor(x_test.size / default_bitrate)
@@ -87,7 +91,7 @@ print(x_test.size / default_bitrate, x_test.ndim)
 model = FunctionSet(
     l1 = F.Linear(n_input, n_units),
     l2 = F.Linear(n_units, n_input)
-)
+).to_gpu()
 
 
 def forward(x_data, y_data, train=True):
@@ -101,6 +105,8 @@ optimizer = optimizers.Adam()
 optimizer.setup(model)
 
 
+loss_train = []
+loss_test = []
 for epoch in range(1, n_epoch + 1):
     print('epoch', epoch)
 
@@ -108,8 +114,8 @@ for epoch in range(1, n_epoch + 1):
     perm = np.random.permutation(n_train_batchset)
     sum_loss = 0
     for i in range(0, n_train_batchset, batchsize):
-        x_batch = np.asarray(x_train[perm[i:i + batchsize]])
-        y_batch = np.asarray(y_train[perm[i:i + batchsize]])
+        x_batch = cuda.to_gpu(x_train[perm[i:i + batchsize]])
+        y_batch = cuda.to_gpu(y_train[perm[i:i + batchsize]])
 
         optimizer.zero_grads()
         loss = forward(x_batch, y_batch)
@@ -120,12 +126,13 @@ for epoch in range(1, n_epoch + 1):
 
     print('train mean loss={}'.format(
         sum_loss / n_train_batchset))
+    loss_train.append(sum_loss / n_train_batchset)
 
     # evaluation
     sum_loss = 0
     for i in range(0, n_test_batchset, batchsize):
-        x_batch = np.asarray(x_test[i:i + batchsize])
-        y_batch = np.asarray(y_test[i:i + batchsize])
+        x_batch = cuda.to_gpu(x_test[i:i + batchsize])
+        y_batch = cuda.to_gpu(y_test[i:i + batchsize])
 
         loss = forward(x_batch, y_batch, train=False)
 
@@ -133,19 +140,44 @@ for epoch in range(1, n_epoch + 1):
 
     print('test  mean loss={}'.format(
         sum_loss / n_test_batchset))
+    loss_test.append(sum_loss / n_test_batchset)
+
+
+# output loss
+f = open(loss_output, 'w')
+for i in range(1, n_epoch + 1):
+    strs = '{0:05.0f} {1:.2f} {2:.2f}\n'.format(i, loss_train[i - 1], loss_test[i - 1])
+    f.writelines(strs)
+f.close()
+
 
 # test
-x = Variable(x_train[100].reshape((1, default_bitrate)))
-t = Variable(y_train[100].reshape((1, default_bitrate)))
-h1 = F.dropout(F.relu(model.l1(x)),  train=False)
-y = F.dropout(model.l2(h1), train=False)
-print(x.data)
-print(y.data)
 
-x_range = np.arange(0, default_bitrate, 1)
-print('test  mean loss={}'.format(F.mean_squared_error(y, t).data))
-print(x.data.ndim, x_range.ndim)
-plt.plot(x_range, y.data[0])
-plt.plot(x_range, t.data[0])
-plt.show()
+x_datas = []
+t_datas = []
+y_datas = []
+for data_subid in range(0, 100):
+    x = Variable(cuda.to_gpu(x_train[50 + data_subid].reshape((1, default_bitrate))))
+    h1 = F.dropout(F.relu(model.l1(x)),  train=False)
+    y = F.dropout(model.l2(h1), train=False)
+    #print(x.data)
+    #print(y.data)
+
+
+    x_range = np.arange(0 + default_bitrate * data_subid, 0 + default_bitrate * data_subid + default_bitrate, 1)
+    print('test  mean loss={}'.format(F.mean_squared_error(y, x).data))
+    #print(x.data.ndim, x_range.ndim)
+    #plt.plot(x_range, y.data[0])
+    #plt.plot(x_range, t.data[0])
+    #plt.show()
+    x_datas.extend(x_range)
+    t_datas.extend(x.data[0])
+    y_datas.extend(y.data[0])
+
+f = open(sample_output, 'w')
+for i in range(0, len(x_datas)):
+    strs = '{0:05.0f} {1:.2f} {2:.2f}\n'.format(x_datas[i], float(t_datas[i]), float(y_datas[i]))
+    f.writelines(strs)
+f.close()
+
 
