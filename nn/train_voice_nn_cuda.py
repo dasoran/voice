@@ -69,12 +69,13 @@ print(n_all_batch)
 
 
 # define constance
-batchsize = 100
+batchsize = 1000
 n_input = default_bitrate
 n_units = 500
 n_epoch = 100
 
 
+# remove zero
 zero_removed_datas = []
 n_removed_batch = 0
 n_ok_batch = 0
@@ -95,18 +96,31 @@ n_all_batch = n_all_batch - n_removed_batch
 print(n_ok_batch, n_removed_batch)
 print(n_all_batch, len(zero_removed_datas) / default_bitrate)
 
+# make noizied copy
+noizied_copy_datas = []
+for i in range(0, n_all_batch):
+    one_batch_datas = np.array(zero_removed_datas[i*default_bitrate:(i+1)*default_bitrate])
+    rand_noizes = np.random.rand(default_bitrate) * 1000 - 500
+    one_batch_datas = (one_batch_datas + rand_noizes).tolist()
+    noizied_copy_datas.extend(one_batch_datas)
+zero_removed_datas.extend(noizied_copy_datas)
+n_all_batch = n_all_batch * 2
+
+print(n_all_batch, len(zero_removed_datas) / default_bitrate)
+
 #np_datas = np.array(datas, dtype=np.float32) - 30000
 #np_datas = np.array(zero_removed_datas, dtype=np.float32)
-np_datas = np.array(zero_removed_datas, dtype=np.float32) - 30000
+np_datas = np.array(zero_removed_datas, dtype=np.float32)
 batched_datas = np_datas.reshape((n_all_batch, default_bitrate))
 batched_datas = batched_datas.astype(np.float32)
-n_train_batchset = math.floor(n_all_batch / batchsize) - 10
-x_train, x_test = np.split(batched_datas, [n_train_batchset * batchsize])
-y_train, y_test = np.split(batched_datas.copy(), [n_train_batchset * batchsize])
+n_train_batchset = n_all_batch - 50000
+x_train, x_test = np.split(batched_datas, [n_train_batchset])
+y_train, y_test = np.split(batched_datas.copy(), [n_train_batchset])
 n_test_batchset = math.floor(x_test.size / default_bitrate)
 
 print(x_train.size / default_bitrate, x_train.ndim)
 print(x_test.size / default_bitrate, x_test.ndim)
+print(n_train_batchset, n_test_batchset, n_train_batchset + n_test_batchset, n_all_batch)
 
 
 model = FunctionSet(
@@ -158,7 +172,7 @@ for epoch in range(1, n_epoch + 1):
 
         loss = forward(x_batch, y_batch, train=False)
 
-        sum_loss += float(loss.data) * len(x_test)
+        sum_loss += float(loss.data) * len(x_batch)
 
     print('test  mean loss={}'.format(
         sum_loss / n_test_batchset))
@@ -174,32 +188,39 @@ f.close()
 
 
 # test
+print('-----')
+print('starting to make test data with model')
 
+x = Variable(cuda.to_gpu(x_test[1000:1000 + 200].reshape((200, default_bitrate))))
+h1 = F.dropout(F.relu(model.l1(x)),  train=False)
+y = F.dropout(model.l2(h1), train=False)
+#print(x.data)
+#print(y.data)
+
+
+x_range = np.arange(0, default_bitrate * 200, 1)
+print('test  mean loss={}'.format(F.mean_squared_error(y, x).data))
+#print(x.data.ndim, x_range.ndim)
+#plt.plot(x_range, y.data[0])
+#plt.plot(x_range, t.data[0])
+#plt.show()
 x_datas = []
 t_datas = []
 y_datas = []
-for data_subid in range(0, 200):
-    x = Variable(cuda.to_gpu(x_train[1000 + data_subid].reshape((1, default_bitrate))))
-    h1 = F.dropout(F.relu(model.l1(x)),  train=False)
-    y = F.dropout(model.l2(h1), train=False)
-    #print(x.data)
-    #print(y.data)
+x_datas.extend(x_range)
+for t_in_onebatch in x.data.tolist():
+    t_datas.extend(t_in_onebatch)
+for y_in_onebatch in y.data.tolist():
+    y_datas.extend(y_in_onebatch)
 
+print('finished converting to save')
 
-    x_range = np.arange(0 + default_bitrate * data_subid, 0 + default_bitrate * data_subid + default_bitrate, 1)
-    print('test  mean loss={}'.format(F.mean_squared_error(y, x).data))
-    #print(x.data.ndim, x_range.ndim)
-    #plt.plot(x_range, y.data[0])
-    #plt.plot(x_range, t.data[0])
-    #plt.show()
-    x_datas.extend(x_range)
-    t_datas.extend(x.data[0])
-    y_datas.extend(y.data[0])
-
-f = open(sample_output, 'w')
+strs = ""
 for i in range(0, len(x_datas)):
-    strs = '{0:05.0f} {1:.2f} {2:.2f}\n'.format(x_datas[i], float(t_datas[i]), float(y_datas[i]))
-    f.writelines(strs)
+    strs = strs + '{0:05.0f} {1:.2f} {2:.2f}\n'.format(x_datas[i], t_datas[i], y_datas[i])
+print('finished making outputdata')
+f = open(sample_output, 'w')
+f.write(strs)
 f.close()
 
 
