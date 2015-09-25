@@ -72,7 +72,7 @@ print(n_all_batch)
 batchsize = 1000
 n_input = default_bitrate
 n_units = 500
-n_epoch = 100
+n_epoch = 20
 
 
 # remove zero
@@ -81,10 +81,11 @@ n_removed_batch = 0
 n_ok_batch = 0
 for i in range(0, n_all_batch):
     one_batch_datas = datas[i*default_bitrate:(i+1)*default_bitrate]
-    isAllZero = True
+    #isAllZero = True
+    isAllZero = False
     for data in one_batch_datas:
         if data > 10:
-            isAllZero = False
+            #isAllZero = False
             break
     if isAllZero:
         n_removed_batch = n_removed_batch + 1
@@ -113,9 +114,10 @@ print(n_all_batch, len(zero_removed_datas) / default_bitrate)
 np_datas = np.array(zero_removed_datas, dtype=np.float32)
 batched_datas = np_datas.reshape((n_all_batch, default_bitrate))
 batched_datas = batched_datas.astype(np.float32)
-n_train_batchset = n_all_batch - 50000
-x_train, x_test = np.split(batched_datas, [n_train_batchset])
-y_train, y_test = np.split(batched_datas.copy(), [n_train_batchset])
+#n_train_batchset = n_all_batch - 50000
+n_train_batchset = n_all_batch - 222960
+x_test, x_train = np.split(batched_datas, [n_all_batch - n_train_batchset])
+y_test, y_train = np.split(batched_datas.copy(), [n_all_batch - n_train_batchset])
 n_test_batchset = math.floor(x_test.size / default_bitrate)
 
 print(x_train.size / default_bitrate, x_train.ndim)

@@ -37,7 +37,7 @@ n_cutting_top_input = 0
 n_cutting_bottom_input = 0
 for i in range(0, len(test_datas) - 1):
     x, input, output_ = tuple(test_datas[i].split(' '))
-    output_data4append = math.floor(float(output_)) + 2000
+    output_data4append = math.floor(float(output_)) + 0
     if output_data4append > 65535:
         output_data4append = 65535
         n_cutting_top_output = n_cutting_top_output + 1
